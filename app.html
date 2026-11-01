@@ -571,6 +571,10 @@ const rootPage = {
       { sec: 'Pogoda' },
       { label: 'Lokalizacja', get: () => (cfg.weather && cfg.weather.label) || '—', chev: true, desc: 'Miejscowość, dla której pokazywana jest pogoda.', onEnter: () => push(wxPage()) },
       { sec: 'Launcher' },
+      { label: 'Skrót powrotu do launchera', get: () => cfg.homeKey ? cfg.homeKey.label : 'Tylko domyślne', desc: 'Dodatkowy klawisz wracający z aplikacji do launchera. Alt+Home i klawisz Strona domowa działają zawsze. Wymaga rozszerzenia przeglądarki.',
+        onEnter: async () => { const c = await captureKey(); if (!c) return; cfg.homeKey = c; await save(); syncHomeKey(); flash('✓ Przypisano: ' + c.label); } },
+      { label: 'Przywróć domyślny skrót', desc: 'Usuwa własny skrót. Alt+Home i klawisz Strona domowa nadal działają.',
+        onEnter: async () => { if (!cfg.homeKey) { flash('Nie masz własnego skrótu.'); return; } delete cfg.homeKey; await save(); syncHomeKey(); flash('✓ Przywrócono domyślne'); } },
       { label: 'Kafelki i aplikacje', chev: true, desc: 'Edytuj, dodawaj i porządkuj kafelki, ustaw ikonki i splashe.', onEnter: () => push(tilesPage()) },
       { sec: 'Pilot' },
       { label: 'Pilot na telefonie', chev: true, desc: 'Steruj komputerem z telefonu przez Wi-Fi: strzałki, gładzik, głośność, klawiatura.', onEnter: () => push(remotePage()) },
@@ -783,6 +787,39 @@ const powerPage = { title: 'Zasilanie', desc: 'Uśpij, uruchom ponownie lub wył
 function openPower() { $('sIcon').innerHTML = PWR.replace('#fff', '#2b2c30'); document.body.classList.add('settings-open'); stack = [powerPage]; showPage(powerPage); }
 function openPage(p, icon) { $('sIcon').innerHTML = icon.replace('#fff', '#2b2c30'); document.body.classList.add('settings-open'); stack = [p]; showPage(p); }
 
+/* ---------- własny skrót powrotu do launchera ---------- */
+const syncHomeKey = () => window.postMessage({ tvLauncher: 'setkey', combo: cfg.homeKey || null }, location.origin);
+function comboError(c) {
+  const sig = [c.ctrl && 'ctrl', c.alt && 'alt', c.shift && 'shift', c.code].filter(Boolean).join('+');
+  if (['ctrl+KeyT', 'ctrl+KeyN', 'ctrl+KeyW', 'ctrl+shift+KeyN', 'ctrl+shift+KeyT', 'ctrl+shift+KeyW', 'alt+F4'].includes(sig)) return 'Ta kombinacja jest zarezerwowana przez przeglądarkę. Wybierz inną.';
+  const plain = !c.ctrl && !c.alt && !c.meta;
+  if (plain && !/^(F\d{1,2}|Browser\w+|Media\w+|Launch\w+|Pause|ScrollLock|PrintScreen|ContextMenu)$/.test(c.code))
+    return 'Taki klawisz przeszkadzałby w pisaniu i nawigacji. Użyj F1–F12, klawisza multimedialnego albo kombinacji z Ctrl/Alt.';
+  return '';
+}
+function captureKey() {
+  return new Promise(res => {
+    const d = $('dlg'), ok = $('dOk'), no = $('dNo');
+    $('dT').textContent = 'Przypisz skrót';
+    $('dX').textContent = 'Naciśnij klawisz lub kombinację (np. F9 albo Ctrl+H). Alt+Home i klawisz Strona domowa nadal działają. Esc anuluje.';
+    $('dC').textContent = ''; ok.style.display = 'none'; no.textContent = 'Anuluj'; d.hidden = false; no.focus();
+    const done = v => { document.removeEventListener('keydown', onKey, true); d.hidden = true; ok.style.display = ''; dlgFin = null; res(v); };
+    dlgFin = () => done(null); no.onclick = () => done(null);
+    const onKey = e => {
+      if (e.key === 'Escape') return;                                   // obsłuży istniejący handler (anuluj)
+      if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;  // czekamy na właściwy klawisz
+      e.preventDefault(); e.stopImmediatePropagation();
+      const c = { code: e.code, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey };
+      const name = e.key.length === 1 ? e.key.toUpperCase() : e.key === ' ' ? 'Spacja' : e.code.startsWith('Browser') ? 'Klawisz ' + e.code.slice(7) : e.key;
+      c.label = [c.ctrl && 'Ctrl', c.alt && 'Alt', c.shift && 'Shift', c.meta && 'Meta', name].filter(Boolean).join('+');
+      const err = comboError(c);
+      if (err) { $('dC').textContent = err; return; }
+      done(c);
+    };
+    document.addEventListener('keydown', onKey, true);
+  });
+}
+
 /* ---------- aktualizacje ---------- */
 const UPDI = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg>';
 let INFO = {}, UPD = null, updPrompted = '';
@@ -857,7 +894,7 @@ function wzBuild() {
       body: () => '<div class="wzKeys"><div>' + kc('←') + kc('↑') + kc('→') + kc('↓') + '</div><div>Przesuwanie po kafelkach i opcjach</div>' +
         '<div>' + kc('Enter') + '</div><div>Otwórz aplikację lub wybierz opcję</div>' +
         '<div>' + kc('Esc') + kc('Backspace') + '</div><div>Wróć o krok w ustawieniach</div>' +
-        '<div>' + kc('Alt+Home') + '</div><div>Wróć do launchera z dowolnej aplikacji (aplikacja zostaje otwarta)</div></div>' },
+        '<div>' + kc('Alt+Home') + (cfg.homeKey ? kc(cfg.homeKey.label) : '') + '</div><div>Wróć do launchera z dowolnej aplikacji (aplikacja zostaje otwarta). Własny skrót ustawisz w Ustawieniach.</div></div>' },
     { icon: ICON.apps, title: 'Aplikacje i kafelki',
       body: () => '<p>Wybierz aplikację i naciśnij Enter. Otworzy się w osobnej karcie, a po powrocie do launchera wystarczy kliknąć ją ponownie, żeby wznowić dokładnie w tym samym miejscu.</p><p>Własne kafelki dodasz w <b>Ustawienia → Kafelki i aplikacje</b>: adres strony, kolory, ikonka i tło.</p>' },
     { icon: ICON.gear, title: 'Co warto ustawić',
@@ -920,6 +957,7 @@ function closeSet() {
   build();
   weather();
   INFO = await getJ('/api/info') || {};
+  syncHomeKey();
   if (!cfg.setupDone) openWizard(); else startupUpdateCheck();
   setInterval(startupUpdateCheck, 6 * 3600 * 1000);
 })();
