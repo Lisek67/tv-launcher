@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>TV</title>
+<body style="margin:0;background:#050507;color:#777;font-family:sans-serif;display:flex;height:100vh;align-items:center;justify-content:center">
+<div>Uruchamianie…</div>
+<script>
+const U = 'http://127.0.0.1:8765/';
+(function go() {
+  fetch(U + 'ping', { mode: 'no-cors', cache: 'no-store' }).then(() => location.replace(U)).catch(() => setTimeout(go, 1500));
+})();
+</script>

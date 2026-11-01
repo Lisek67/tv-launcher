@@ -1,0 +1,98 @@
+{
+ "rows": [
+  [
+   {
+    "id": "youtube",
+    "name": "YouTube",
+    "sub": "Filmy i kanały",
+    "url": "https://www.youtube.com/tv",
+    "c1": "#000000",
+    "c2": "#000000",
+    "icon": "img/custom/25c06622ccc2.svg",
+    "splash": "img/custom/44d7db2c290e.jpg"
+   },
+   {
+    "id": "netflix",
+    "name": "Netflix",
+    "sub": "Filmy i seriale",
+    "url": "https://www.netflix.com",
+    "c1": "#000000",
+    "c2": "#000000",
+    "icon": "img/custom/1d3f5d21a425.svg",
+    "splash": "img/custom/682f20aa9b8b.png"
+   },
+   {
+    "id": "disney",
+    "name": "Disney+",
+    "sub": "Disney, Marvel, Star Wars",
+    "url": "https://www.disneyplus.com",
+    "c1": "#000000",
+    "c2": "#000000",
+    "icon": "img/custom/7cbe03a01075.svg",
+    "splash": "img/custom/bf16df0199f4.jpg"
+   },
+   {
+    "id": "spotify",
+    "name": "Spotify",
+    "sub": "Muzyka i podcasty",
+    "url": "https://open.spotify.com",
+    "c1": "#000000",
+    "c2": "#000000",
+    "icon": "img/custom/64537a002bc1.svg",
+    "splash": "img/custom/b0784383a56d.jpg"
+   }
+  ],
+  [
+   {
+    "id": "twitch",
+    "name": "Twitch",
+    "sub": "Transmisje na żywo",
+    "url": "https://www.twitch.tv",
+    "c1": "#9146ff",
+    "c2": "#2a0e5c"
+   },
+   {
+    "id": "tvp",
+    "name": "TVP VOD",
+    "sub": "Telewizja na życzenie",
+    "url": "https://vod.tvp.pl",
+    "c1": "#2a3f9e",
+    "c2": "#090f30"
+   },
+   {
+    "id": "player",
+    "name": "Player",
+    "sub": "Seriale i programy TV",
+    "url": "https://www.player.pl",
+    "c1": "#ff4d4d",
+    "c2": "#4a0808"
+   }
+  ],
+  [
+   {
+    "id": "google",
+    "name": "Google",
+    "sub": "Wyszukiwarka",
+    "url": "https://www.google.com",
+    "c1": "#4285f4",
+    "c2": "#0e2a5e"
+   },
+   {
+    "id": "pogoda",
+    "name": "Pogoda",
+    "sub": "Mapa pogodowa Windy",
+    "url": "https://www.windy.com",
+    "c1": "#00b4d8",
+    "c2": "#022a5e"
+   },
+   {
+    "id": "mapy",
+    "name": "Mapy",
+    "sub": "Mapy Google",
+    "url": "https://www.google.com/maps",
+    "c1": "#34a853",
+    "c2": "#0b3318"
+   }
+  ]
+ ]
+}

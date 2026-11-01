@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "User-Agent",
+          "operation": "set",
+          "value": "Mozilla/5.0 (PlayStation; PlayStation 5/2.26) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0 Safari/605.1.15"
+        }
+      ]
+    },
+    "condition": {
+      "urlFilter": "||youtube.com",
+      "resourceTypes": ["main_frame", "sub_frame", "xmlhttprequest", "script", "other"]
+    }
+  }
+]

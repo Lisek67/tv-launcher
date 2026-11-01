@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "TV user-agent",
+  "version": "1.2",
+  "permissions": [
+    "declarativeNetRequest",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ua",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://127.0.0.1:8765/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "exclude_matches": [
+        "http://127.0.0.1:8765/*"
+      ],
+      "js": [
+        "keys.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "commands": {
+    "launcher": {
+      "suggested_key": {
+        "default": "Alt+Home"
+      },
+      "description": "Wróć do launchera (karta aplikacji zostaje otwarta)"
+    }
+  }
+}

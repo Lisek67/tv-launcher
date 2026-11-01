@@ -1,0 +1,9 @@
+# dane użytkownika (tworzone lokalnie, nie wrzucaj do repozytorium)
+config.json
+remote.json
+backup/
+# pliki tymczasowe
+__pycache__/
+*.new
+*.bak
+tv-ua/_metadata/
