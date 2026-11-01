@@ -28,24 +28,8 @@ Po starcie pokaże się kreator: nawigacja, kafelki, ustawienia, pilot na telefo
 ## Pilot na telefonie
 **Ustawienia → Pilot na telefonie** pokazuje adres i PIN. Otwórz adres w przeglądarce telefonu (ta sama sieć Wi-Fi), wpisz PIN. Strzałki, gładzik/mysz, głośność, klawiatura, uśpienie/restart/wyłączenie. Port `8766` musi być dostępny w zaporze. Ruch idzie po zwykłym HTTP w sieci domowej, więc nie korzystaj z pilota w sieciach publicznych.
 
-## Aktualizacje (dla twórcy)
-Launcher przy starcie (i co 6 godzin) pyta GitHub o najnowsze **wydanie** (Release) repozytorium z pliku `version.json`. Jeśli jest nowsze, pokazuje listę zmian i pyta, czy zaktualizować. Ustawienia (`config.json`), sparowane telefony (`remote.json`) i kafelki nie są ruszane. Poprzednie pliki trafiają do `backup/<wersja>/`.
-
-**Jak wydać aktualizację:**
-1. Wprowadź zmiany i wrzuć je do repozytorium.
-2. Wydaj wersję jednym poleceniem (podbija `version.json`, commit, tag, push, Release):
-   ```bash
-   bash release.sh 1.1.0 $'- Nowy kreator\n- Poprawki pilota'
-   ```
-   albo ręcznie: zmień `version` w `version.json` → commit i push → GitHub → Releases → *Draft a new release* → tag `v1.1.0` (musi zgadzać się z `version.json`) → w opisie wpisz listę zmian (to ją zobaczą użytkownicy) → *Publish*.
-3. Gotowe. Launchery znajomych zobaczą okno "Dostępna aktualizacja".
-
-**Ważne:**
-- Repozytorium musi być **publiczne** (launcher pyta GitHub bez logowania).
-- Ustaw swoje repozytorium w `version.json` (`"repo": "twojlogin/tv-launcher"`), zanim wyślesz pierwszą wersję.
-- Aktualizacja uruchamia kod z Twojego repozytorium na komputerach znajomych. Włącz 2FA na koncie GitHub i nie wydawaj nic, czego nie sprawdziłeś. Launcher odrzuca archiwa z uszkodzonym kodem Pythona i z niebezpiecznymi ścieżkami.
-- Zmiany w folderze `tv-ua` (rozszerzenie) wymagają jeszcze ręcznego odświeżenia rozszerzenia w `brave://extensions`. Napisz o tym w opisie wydania.
-- Zmiany w `install.sh` / `install.ps1` nie wykonują się automatycznie. Jeśli wymagają ponownej instalacji, też napisz to w opisie.
+## Aktualizacje
+Launcher sam sprawdza, czy jest nowa wersja, i pyta, czy zaktualizować (Ustawienia → Aktualizacje). Twoje ustawienia i kafelki zostają bez zmian.
 
 ## Struktura
 | Plik | Do czego |
