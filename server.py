@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import io, json, os, re, shutil, subprocess, sys, time, hashlib, mimetypes, zipfile
+import io, json, os, platform, re, shutil, subprocess, sys, time, hashlib, mimetypes, zipfile
 import urllib.error, urllib.request
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -10,6 +10,7 @@ from remote import make_server, power   # power(): Linux (systemctl) i Windows (
 IS_WIN = os.name == 'nt'
 
 PORT = 8765
+START_TIME = time.time()
 ROOT = os.path.dirname(os.path.realpath(__file__))
 IMG = os.path.join(ROOT, 'img')
 CUSTOM = os.path.join(IMG, 'custom')
@@ -372,7 +373,8 @@ def info_data():
     vi = version_info()
     return {'name': vi.get('name', 'TV Launcher'), 'version': vi.get('version', '0.0.0'), 'creator': vi.get('creator', 'lissszek'),
             'repo': vi.get('repo', ''), 'os': 'windows' if IS_WIN else 'linux', 'display': not IS_WIN, 'time': not IS_WIN,
-            'ext_dir': os.path.join(ROOT, 'tv-ua'), 'home_key': 'Alt+Home'}
+            'ext_dir': os.path.join(ROOT, 'tv-ua'), 'home_key': 'Alt+Home',
+            'platform': platform.platform(), 'python': platform.python_version(), 'root': ROOT, 'started': int(START_TIME)}
 
 def _win_is_fullscreen(exe_name):
     """Windows: True/False, czy okno na wierzchu (jeśli to nasza przeglądarka) zajmuje cały monitor.
