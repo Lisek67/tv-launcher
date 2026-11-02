@@ -591,7 +591,7 @@ const rootPage = {
       { sec: 'Pilot' },
       { label: 'Pilot na telefonie', chev: true, desc: 'Steruj komputerem z telefonu przez Wi-Fi: strzałki, gładzik, głośność, klawiatura.', onEnter: () => push(remotePage()) },
       { sec: 'O programie' },
-      { label: 'Wersja', get: () => 'v' + (INFO.version || '?') + ' ' + osLetter() },
+      { label: 'Wersja', get: () => 'v' + (INFO.version || '?') + ' ' + osLetter(), onEnter: verTap },
       { label: 'Twórca', get: () => INFO.creator || 'lissszek' },
       { label: 'Aktualizacje', chev: true, get: () => UPD && UPD.available ? 'Dostępna v' + UPD.latest : '', desc: 'Sprawdź, czy jest nowa wersja launchera, i zobacz listę zmian.', onEnter: () => push(updatePage(false)) },
       { label: 'Samouczek', desc: 'Pokaż ponownie kreator konfiguracji.', onEnter: () => { closeSet(); openWizard(); } },
@@ -836,6 +836,55 @@ function captureKey() {
     };
     document.addEventListener('keydown', onKey, true);
   });
+}
+
+/* ---------- informacje o kliencie (5x Enter na "Wersja") ---------- */
+let verTaps = 0, verT = 0;
+function verTap() {
+  const now = Date.now();
+  verTaps = now - verT < 2000 ? verTaps + 1 : 1; verT = now;
+  if (verTaps >= 5) { verTaps = 0; push(infoPage()); }
+  else if (verTaps >= 3) flash('Jeszcze ' + (5 - verTaps) + '…');
+}
+const fmtUp = s => { s = Math.max(0, Math.floor(s)); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + ' d ' : '') + (h || d ? h + ' h ' : '') + m + ' min'; };
+async function infoData() {
+  let brave = false; try { brave = !!(navigator.brave && await navigator.brave.isBrave()); } catch (e) {}
+  const ua = navigator.userAgent, m = ua.match(/(Chrome|Firefox|Edg)\/([\d.]+)/);
+  const tiles = (cfg.rows || DEFAULT_ROWS).reduce((n, r) => n + r.length, 0);
+  return [
+    ['Aplikacja', INFO.name + ' v' + (INFO.version || '?') + ' ' + osLetter()],
+    ['Twórca', INFO.creator || 'lissszek'],
+    ['System', (INFO.os === 'windows' ? 'Windows' : 'Linux') + ' · ' + (INFO.platform || navigator.platform)],
+    ['Przeglądarka', (brave ? 'Brave · ' : '') + (m ? m[1].replace('Edg', 'Edge') + ' ' + m[2] : ua)],
+    ['Ekran', screen.width + '×' + screen.height + ' · skala ' + (window.devicePixelRatio || 1)],
+    ['Okno (px CSS)', innerWidth + '×' + innerHeight],
+    ['Język / strefa', navigator.language + ' · ' + Intl.DateTimeFormat().resolvedOptions().timeZone],
+    ['Rozszerzenie', document.documentElement.dataset.tvext === '1' ? 'Wykryte' : 'Nie wykryte'],
+    ['Własny skrót', cfg.homeKey ? cfg.homeKey.label : 'brak'],
+    ['Kafelki', String(tiles)],
+    ['Python', INFO.python || '—'],
+    ['Czas działania', INFO.started ? fmtUp(Date.now() / 1000 - INFO.started) : '—'],
+    ['Repozytorium', INFO.repo || '—'],
+    ['Najnowsza wersja', UPD && UPD.latest ? 'v' + UPD.latest + (UPD.available ? ' (dostępna)' : '') : '—'],
+    ['Folder', INFO.root || '—'],
+    ['Adres launchera', location.origin]
+  ];
+}
+function infoPage() {
+  return { title: 'Informacje o kliencie', desc: 'Dane diagnostyczne tej instalacji. Przydają się przy zgłaszaniu problemów.', items: async () => {
+    INFO = Object.assign(INFO, await getJ('/api/info') || {});
+    const data = await infoData();
+    return [
+      { sec: 'Klient' },
+      ...data.map(([k, v]) => ({ label: k, get: () => v, desc: v })),
+      { sec: '' },
+      { label: 'Kopiuj informacje', primary: true, onEnter: async () => {
+        try { await navigator.clipboard.writeText(data.map(([k, v]) => k + ': ' + v).join('\n')); flash('✓ Skopiowano do schowka'); }
+        catch (e) { flash('✗ Nie udało się skopiować'); }
+      } },
+      { label: 'Wstecz', onEnter: pop }
+    ];
+  } };
 }
 
 /* ---------- aktualizacje ---------- */
