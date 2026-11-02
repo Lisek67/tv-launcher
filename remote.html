@@ -16,6 +16,7 @@ button { font:inherit; color:var(--fg); background:var(--card); border:0; border
 button:active, button.down { background:var(--card2); transform:scale(.97); }
 .row { display:grid; gap:10px; }
 .r3 { grid-template-columns:repeat(3,1fr); }
+.r4 { grid-template-columns:repeat(4,1fr); }
 .tabs { grid-template-columns:1fr 1fr; }
 .tabs button { min-height:44px; color:var(--mut); }
 .tabs button.on { background:var(--acc); color:#10131a; font-weight:600; }
@@ -71,19 +72,21 @@ details .row { padding-bottom:12px; }
     <div id="pad"><span id="padHint">Przesuń palcem, aby nawigować.<br>Dotknij = OK. Dwa palce = Wstecz.</span></div>
   </div>
 
-  <div class="row r3">
+  <div class="row r4">
     <button data-k="back">⟵ Wstecz</button>
     <button data-k="home">⌂ Home</button>
     <button data-k="play">⏯</button>
+    <button data-k="f11">⛶</button>
   </div>
   <div class="row r3">
     <button data-k="vdown" data-rep>🔉 −</button>
     <button data-k="mute">🔇</button>
     <button data-k="vup" data-rep>🔊 +</button>
   </div>
-  <div class="row r3">
+  <div class="row r4">
     <button data-k="prev">⏮</button>
     <button data-k="space">Spacja</button>
+    <button data-k="switch">⇄ Okno</button>
     <button data-k="next">⏭</button>
   </div>
 

@@ -134,6 +134,8 @@
   #wzDots { position: absolute; bottom: 5vh; left: 0; right: 0; display: flex; justify-content: center; gap: .8vw; }
   #wzDots i { width: .7vw; height: .7vw; border-radius: 50%; background: rgba(255,255,255,.25); }
   #wzDots i.on { background: #fff; }
+  #toast { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); z-index: 40; padding: .8vw 1.8vw; border-radius: 1vw; font-size: 1.4vw; background: rgba(30,30,34,.92); color: #fff; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #toast.on { opacity: 1; }
   #wzHint { position: absolute; bottom: 1.6vh; left: 0; right: 0; text-align: center; font-size: 1vw; color: rgba(255,255,255,.4); }
 </style>
 </head>
@@ -159,6 +161,7 @@
     <div class="dbtns"><button id="dOk"></button><button id="dNo"></button></div></div></div>
 </div>
 
+<div id="toast"></div>
 <div id="wz">
   <div class="wzIn"><div id="wzIcon"></div><div class="wzMain"><div id="wzT"></div><div id="wzB"></div><div class="wzBtns" id="wzBtns"></div></div></div>
   <div id="wzDots"></div>
@@ -279,10 +282,19 @@ function wire(t) {
     e.preventDefault();
     const it = ROWS[+t.dataset.r][+t.dataset.c];
     if (it.special) { if (it.id === 'power') openPower(); else openSet(); return; }
+    if (it.cmd) { launchCmd(it, t); return; }
     if (cfg.reuseTabs !== false && openApp(it, t)) return;
     t.classList.add('launch'); document.body.classList.add('leaving');
     setTimeout(() => { location.href = it.url; }, 330);
   });
+}
+let toastT;
+const toast = m => { const e = $('toast'); e.textContent = m; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('on'), 3500); };
+async function launchCmd(it, t) {
+  t.classList.add('launch'); document.body.classList.add('leaving');
+  const j = await postJ('/api/launch', { id: it.id });
+  setTimeout(() => { t.classList.remove('launch'); document.body.classList.remove('leaving'); }, 700);
+  if (!j.ok) toast('✗ ' + (j.msg || 'Nie udało się uruchomić aplikacji')); else toast('Uruchamiam ' + it.name + '… (Alt+Tab wraca do launchera)');
 }
 const park = () => { try { post('/api/park', {}).catch(() => {}); } catch (e) {} };
 /* Aplikacje w osobnych, nazwanych kartach: ponowne kliknięcie wraca do już otwartej karty zamiast ładować od nowa */
@@ -579,7 +591,7 @@ const rootPage = {
       { sec: 'Pilot' },
       { label: 'Pilot na telefonie', chev: true, desc: 'Steruj komputerem z telefonu przez Wi-Fi: strzałki, gładzik, głośność, klawiatura.', onEnter: () => push(remotePage()) },
       { sec: 'O programie' },
-      { label: 'Wersja', get: () => 'v' + (INFO.version || '?') },
+      { label: 'Wersja', get: () => 'v' + (INFO.version || '?') + ' ' + osLetter() },
       { label: 'Twórca', get: () => INFO.creator || 'lissszek' },
       { label: 'Aktualizacje', chev: true, get: () => UPD && UPD.available ? 'Dostępna v' + UPD.latest : '', desc: 'Sprawdź, czy jest nowa wersja launchera, i zobacz listę zmian.', onEnter: () => push(updatePage(false)) },
       { label: 'Samouczek', desc: 'Pokaż ponownie kreator konfiguracji.', onEnter: () => { closeSet(); openWizard(); } },
@@ -706,13 +718,16 @@ function tileActions(ri, ci) {
 
 function formPage(ri, ci) {
   const editing = ri !== null, rows = ensureRows(), src = editing ? rows[ri][ci] : null, http = u => /^https?:/i.test(u || '') ? u : '';
-  const F = { name: src ? src.name : '', url: src ? src.url : '', sub: src ? src.sub : '', col: src && /^#[0-9a-f]{6}$/i.test(src.c1) ? src.c1 : '#3b82f6',
+  const F = { name: src ? src.name : '', url: src && src.url !== '#' ? src.url : '', cmd: src && src.cmd ? src.cmd : '', sub: src ? src.sub : '', col: src && /^#[0-9a-f]{6}$/i.test(src.c1) ? src.c1 : '#3b82f6',
     iconFile: null, iconUrl: src ? http(src.icon) : '', fit: !!(src && src.fit === 'cover'), splashFile: null, splashUrl: src ? http(src.splash) : '',
-    hide: !!(src && src.hideTitle), rmIcon: false, rmSplash: false, row: rows.length ? 0 : 'new' };
+    hide: !!(src && src.hideTitle), fs: !!(src && src.fullscreen), rmIcon: false, rmSplash: false, row: rows.length ? 0 : 'new' };
   const onoff = k => () => F[k] ? 'Tak' : 'Nie', flip = k => () => { F[k] = !F[k]; };
   const inp = (label, k, ph, desc) => ({ label, input: 'text', ph, desc, val: () => F[k], set: x => { F[k] = x; } });
   const items = [
-    inp('Nazwa', 'name', 'np. Netflix'), inp('Adres strony', 'url', 'np. youtube.com albo 192.168.1.50:8096'), inp('Podpis', 'sub', 'opcjonalnie'),
+    inp('Nazwa', 'name', 'np. Netflix'), inp('Adres strony', 'url', 'np. youtube.com albo 192.168.1.50:8096'),
+    inp('Polecenie (aplikacja)', 'cmd', 'np. spotify', 'Gdy podasz polecenie, kafelek uruchamia zainstalowaną aplikację zamiast otwierać stronę (adres jest wtedy zbędny). Np. spotify albo flatpak run com.spotify.Client.'),
+    { label: 'Pełny ekran po uruchomieniu', get: onoff('fs'), onEnter: flip('fs'), desc: 'Po uruchomieniu aplikacji launcher naciśnie F11 (po ok. 5 s). Działa tylko z poleceniem powyżej. Jeśli aplikacja sama pamięta pełny ekran, wyłącz tę opcję, bo F11 by go cofnął.' },
+    inp('Podpis', 'sub', 'opcjonalnie'),
     { label: 'Kolor tła', color: true, val: () => F.col, set: x => { F.col = x; } },
     { sec: 'Ikonka kafelka' },
     { label: 'Plik ikonki', file: true, get: () => F.iconFile ? F.iconFile.name : 'Wybierz…', set: f => { F.iconFile = f; }, desc: 'JPG, PNG, WebP lub SVG.' },
@@ -727,9 +742,10 @@ function formPage(ri, ci) {
   else items.push({ sec: 'Położenie' }, { label: 'Rząd', get: () => F.row === 'new' ? 'Nowy rząd' : 'Rząd ' + (F.row + 1), desc: 'Naciśnij, aby zmienić rząd.',
     onEnter: () => { const n = rows.length; F.row = F.row === 'new' ? 0 : (F.row + 1 >= n ? 'new' : F.row + 1); } });
   items.push({ sec: '' }, { label: editing ? 'Zapisz zmiany' : 'Dodaj kafelek', primary: true, onEnter: async () => {
-    const name = F.name.trim(), raw = F.url.trim();
-    if (!name || !raw) { flash('Podaj nazwę i adres.'); return; }
-    const url = normUrl(raw); let host; try { host = new URL(url).hostname; } catch (e) { flash('Nieprawidłowy adres.'); return; }
+    const name = F.name.trim(), raw = F.url.trim(), cmd = F.cmd.trim();
+    if (!name || (!raw && !cmd)) { flash('Podaj nazwę oraz adres strony albo polecenie.'); return; }
+    let url = '#', host = 'Aplikacja';
+    if (raw) { url = normUrl(raw); try { host = new URL(url).hostname; } catch (e) { flash('Nieprawidłowy adres.'); return; } }
     let icon, splash;
     try {
       if (F.iconFile) { flash('Wysyłam ikonkę…'); icon = await upImg(F.iconFile, 0); }
@@ -737,6 +753,8 @@ function formPage(ri, ci) {
     } catch (e) { flash('✗ ' + e.message); return; }
     const it = editing ? rows[ri][ci] : { id: 'c' + Date.now().toString(36), custom: true };
     it.name = name; it.url = url; it.sub = F.sub.trim() || host;
+    if (cmd) it.cmd = cmd; else delete it.cmd;
+    if (cmd && F.fs) it.fullscreen = true; else delete it.fullscreen;
     if (!editing || F.col.toLowerCase() !== String(it.c1).toLowerCase()) { it.c1 = F.col; it.c2 = shade(F.col, .45); }
     if (icon) it.icon = icon; else if (cleanUrl(F.iconUrl)) it.icon = cleanUrl(F.iconUrl); else if (F.rmIcon || http(it.icon)) delete it.icon;
     if (splash) it.splash = splash; else if (cleanUrl(F.splashUrl)) it.splash = cleanUrl(F.splashUrl); else if (F.rmSplash || http(it.splash)) delete it.splash;
@@ -823,6 +841,7 @@ function captureKey() {
 /* ---------- aktualizacje ---------- */
 const UPDI = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/></svg>';
 let INFO = {}, UPD = null, updPrompted = '';
+const osLetter = () => INFO.os === 'windows' ? 'W' : 'L';   // L = Linux, W = Windows
 const checkUpdate = async force => { UPD = await getJ('/api/update/check' + (force ? '?force=1' : '')); return UPD; };
 function fmtNotes(txt) {
   const out = [];
@@ -838,6 +857,7 @@ async function doUpdate(u) {
   flash('Pobieram i instaluję…');
   const j = await postJ('/api/update/apply');
   if (!j.ok) { flash('✗ ' + (j.msg || 'Aktualizacja się nie udała')); return; }
+  try { localStorage.setItem('tvPostUpdate', j.version); } catch (e) {}
   flash('✓ Zainstalowano v' + j.version + '. Uruchamiam ponownie…');
   await new Promise(r => setTimeout(r, 2600));
   for (let i = 0; i < 60; i++) {
@@ -849,7 +869,7 @@ async function doUpdate(u) {
 function updatePage(prompt) {
   return { title: prompt ? 'Dostępna aktualizacja' : 'Aktualizacje', desc: 'Nowe wersje launchera pobierane są z GitHuba. Twoje ustawienia i kafelki zostają bez zmian.', items: async () => {
     const u = prompt && UPD ? UPD : await checkUpdate(true);
-    const items = [{ text: 'Zainstalowana wersja: v' + (INFO.version || '?') + '   ·   Najnowsza: ' + (u && u.latest ? 'v' + u.latest : '—') }];
+    const items = [{ text: 'Zainstalowana wersja: v' + (INFO.version || '?') + ' ' + osLetter() + '   ·   Najnowsza: ' + (u && u.latest ? 'v' + u.latest : '—') }];
     if (!u || u.error) items.push({ text: '✗ ' + ((u && u.error) || 'Nie udało się sprawdzić aktualizacji.') });
     else if (u.available) {
       items.push({ sec: 'Co nowego w v' + u.latest }, ...(fmtNotes(u.notes).length ? fmtNotes(u.notes) : [{ text: 'Brak opisu zmian.' }]), { sec: '' },
@@ -861,6 +881,19 @@ function updatePage(prompt) {
     if (!prompt) items.push({ sec: '' }, { label: 'Wstecz', onEnter: pop });
     return items;
   } };
+}
+function restartPage(v) {
+  return { title: 'Zaktualizowano do v' + v, desc: 'Aby wszystkie zmiany zadziałały, uruchom ponownie komputer.', items: [
+    { text: '✓ Aktualizacja została zainstalowana.' },
+    { text: 'Zalecamy teraz zrestartować komputer, żeby nowa wersja działała w pełni.' },
+    { sec: '' },
+    { label: 'Uruchom ponownie', primary: true, onEnter: async () => {
+      flash('Restartuję…');
+      const j = await postJ('/api/power', { action: 'reboot' });
+      if (!j.ok) flash('✗ ' + (j.msg || 'Nie udało się zrestartować'));
+    } },
+    { label: 'Później', onEnter: closeSet }
+  ] };
 }
 async function startupUpdateCheck() {
   if (cfg.autoUpdate === false) return;
@@ -958,7 +991,11 @@ function closeSet() {
   weather();
   INFO = await getJ('/api/info') || {};
   syncHomeKey();
-  if (!cfg.setupDone) openWizard(); else startupUpdateCheck();
+  let justUpdated = null;
+  try { justUpdated = localStorage.getItem('tvPostUpdate'); localStorage.removeItem('tvPostUpdate'); } catch (e) {}
+  if (!cfg.setupDone) openWizard();
+  else if (justUpdated) openPage(restartPage(INFO.version || justUpdated), PWR);
+  else startupUpdateCheck();
   setInterval(startupUpdateCheck, 6 * 3600 * 1000);
 })();
 </script>

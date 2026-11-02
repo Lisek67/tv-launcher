@@ -320,11 +320,102 @@ def restart_soon():
     import threading
     threading.Thread(target=go, daemon=True).start()
 
+def load_cfg():
+    for p in (CONF, CONF_DEFAULT):
+        try:
+            with open(p, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def _after_launch(tile):
+    """Opcjonalnie: po uruchomieniu aplikacji natywnej naciśnij F11 (pełny ekran) po kilku sekundach."""
+    if not (tile or {}).get('fullscreen'):
+        return
+    try:
+        delay = max(1.0, min(30.0, float(tile.get('fsDelay', 5))))
+    except (TypeError, ValueError):
+        delay = 5.0
+    import threading
+    threading.Thread(target=lambda: (time.sleep(delay), remote.press('f11')), daemon=True).start()
+
+def launch_app(tile_id):
+    """Uruchamia zainstalowaną aplikację dla kafelka z polem 'cmd'. Polecenie pochodzi z zapisanej konfiguracji,
+    nigdy z samego żądania, więc przez sieć nie da się uruchomić czegokolwiek innego."""
+    tile = next((t for row in (load_cfg().get('rows') or []) for t in row if t.get('id') == tile_id), None)
+    cmd = (tile or {}).get('cmd')
+    if not isinstance(cmd, str) or not cmd.strip() or len(cmd) > 500:
+        return {'ok': False, 'msg': 'Ten kafelek nie ma polecenia.'}
+    try:
+        if IS_WIN:
+            p = subprocess.Popen(cmd, shell=True, cwd=os.path.expanduser('~'), stdin=subprocess.DEVNULL,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=0x00000008 | 0x00000200 | 0x08000000)
+        else:
+            env = remote.wl_env()
+            env.setdefault('DISPLAY', ':0')
+            p = subprocess.Popen(cmd, shell=True, env=env, cwd=os.path.expanduser('~'), stdin=subprocess.DEVNULL,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    except Exception as e:
+        return {'ok': False, 'msg': str(e)}
+    try:
+        code = p.wait(timeout=1.5)          # jeśli proces od razu się kończy, to zwykle błąd polecenia
+    except subprocess.TimeoutExpired:
+        _after_launch(tile)
+        return {'ok': True}
+    if code == 0:
+        _after_launch(tile)
+        return {'ok': True}
+    return {'ok': False, 'msg': 'Nie znaleziono polecenia.' if code == 127 else f'Polecenie zakończyło się błędem (kod {code}).'}
+
 def info_data():
     vi = version_info()
     return {'name': vi.get('name', 'TV Launcher'), 'version': vi.get('version', '0.0.0'), 'creator': vi.get('creator', 'lissszek'),
             'repo': vi.get('repo', ''), 'os': 'windows' if IS_WIN else 'linux', 'display': not IS_WIN, 'time': not IS_WIN,
             'ext_dir': os.path.join(ROOT, 'tv-ua'), 'home_key': 'Alt+Home'}
+
+def _win_is_fullscreen(exe_name):
+    """Windows: True/False, czy okno na wierzchu (jeśli to nasza przeglądarka) zajmuje cały monitor.
+    None = na wierzchu jest coś innego (jeszcze nie wiadomo)."""
+    import ctypes
+    from ctypes import wintypes
+    u, k = ctypes.windll.user32, ctypes.windll.kernel32
+    hwnd = u.GetForegroundWindow()
+    if not hwnd:
+        return None
+    pid = wintypes.DWORD()
+    u.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    h = k.OpenProcess(0x1000, False, pid.value)          # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return None
+    buf, n = ctypes.create_unicode_buffer(1040), wintypes.DWORD(1040)
+    ok = k.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(n))
+    k.CloseHandle(h)
+    if not ok or os.path.basename(buf.value).lower() != exe_name.lower():
+        return None
+    class MONITORINFO(ctypes.Structure):
+        _fields_ = [('cbSize', wintypes.DWORD), ('rcMonitor', wintypes.RECT), ('rcWork', wintypes.RECT), ('dwFlags', wintypes.DWORD)]
+    rect = wintypes.RECT()
+    u.GetWindowRect(hwnd, ctypes.byref(rect))
+    mi = MONITORINFO()
+    mi.cbSize = ctypes.sizeof(mi)
+    u.GetMonitorInfoW(u.MonitorFromWindow(hwnd, 2), ctypes.byref(mi))
+    m = mi.rcMonitor
+    return rect.left <= m.left and rect.top <= m.top and rect.right >= m.right and rect.bottom >= m.bottom
+
+def ensure_fullscreen(check, press, sleep=time.sleep, delays=(3, 3, 4, 5, 5, 5, 5)):
+    """--start-fullscreen bywa ignorowane (np. przeglądarka już działa). F11 naciskamy tylko wtedy,
+    gdy okno przeglądarki na pewno NIE jest pełnoekranowe, i najwyżej dwa razy (żeby go nie cofnąć)."""
+    presses = 0
+    for d in delays:
+        sleep(d)
+        st = check()
+        if st is True:
+            return True
+        if st is False and presses < 2:
+            press('f11')
+            presses += 1
+    return False
 
 def open_browser():
     """Uruchamia przeglądarkę na pełnym ekranie z launcherem (opcja --browser, używana w autostarcie Windows)."""
@@ -348,6 +439,9 @@ def open_browser():
                 break
     if exe:
         subprocess.Popen([exe, '--start-fullscreen', '--load-extension=' + os.path.join(ROOT, 'tv-ua'), url])
+        if IS_WIN:
+            name = os.path.basename(exe)
+            ensure_fullscreen(lambda: _win_is_fullscreen(name), remote.press)
 
 def lan_ip():
     import socket
@@ -495,6 +589,8 @@ class H(BaseHTTPRequestHandler):
                 return self.out(200, display_revert())
             if path == '/api/park':
                 return self.out(200, {'ok': park_cursor()})
+            if path == '/api/launch':
+                return self.out(200, launch_app(str(json.loads(self.body(2_000)).get('id', ''))))
             if path == '/api/update/apply':
                 res = update_apply()
                 if res.get('ok'):

@@ -65,18 +65,22 @@ KEYS = {
     'up': [103], 'down': [108], 'left': [105], 'right': [106], 'ok': [28], 'enter': [28],
     'back': [1],                 # Esc
     'home': [56, 102],           # Alt+Home -> rozszerzenie wraca do launchera
+    'switch': [56, 15],          # Alt+Tab (przełączenie okna, np. z aplikacji natywnej do launchera)
     'play': [164], 'next': [163], 'prev': [165],
     'vup': [115], 'vdown': [114], 'mute': [113],
     'backspace': [14], 'tab': [15], 'space': [57],
+    'f11': [87],                 # pełny ekran
 }
 # Windows: (kod VK, czy klawisz rozszerzony)
 WKEYS = {
     'up': [(0x26, 1)], 'down': [(0x28, 1)], 'left': [(0x25, 1)], 'right': [(0x27, 1)],
     'ok': [(0x0D, 0)], 'enter': [(0x0D, 0)], 'back': [(0x1B, 0)],
     'home': [(0x12, 0), (0x24, 1)],
+    'switch': [(0x12, 0), (0x09, 0)],
     'play': [(0xB3, 0)], 'next': [(0xB0, 0)], 'prev': [(0xB1, 0)],
     'vup': [(0xAF, 0)], 'vdown': [(0xAE, 0)], 'mute': [(0xAD, 0)],
     'backspace': [(0x08, 0)], 'tab': [(0x09, 0)], 'space': [(0x20, 0)],
+    'f11': [(0x7A, 0)],
 }
 ACTIONS = ('suspend', 'reboot', 'poweroff')
 
